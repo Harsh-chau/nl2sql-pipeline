@@ -1,0 +1,31 @@
+import sqlite3
+from dotenv import load_dotenv
+from langchain_community.llms import OpenAI
+from langchain_community.utilities import SQLDatabase
+from langchain.chains import create_sql_query_chain
+
+load_dotenv()
+
+def create_sample_database():
+    conn = sqlite3.connect('company.db')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS employees
+                      (id INTEGER, name TEXT, department TEXT, salary INTEGER)''')
+    cursor.executemany("INSERT OR IGNORE INTO employees VALUES (?, ?, ?, ?)", 
+                       [(1, 'Alice', 'IT', 80000), (2, 'Bob', 'HR', 60000), 
+                        (3, 'Charlie', 'IT', 95000), (4, 'Diana', 'Finance', 70000)])
+    conn.commit()
+    conn.close()
+    print("✅ Database Created!")
+
+def main():
+    create_sample_database()
+    db = SQLDatabase.from_uri("sqlite:///company.db")
+    llm = OpenAI(temperature=0)
+    chain = create_sql_query_chain(llm, db)
+    question = input("Ask a question about employees: ")
+    response = chain.invoke({"question": question})
+    print("\n✅ SQL Query:\n", response)
+
+if __name__ == "__main__":
+    main()
